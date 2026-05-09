@@ -74,6 +74,11 @@ spring:
       properties:
         # 🔹 Trust package for JSON deserialization
         spring.json.trusted.packages: "*"
+        # 🔹 Don't rely on producer's type header (which may reference classes not on this classpath)
+        #    Tell the deserializer to ignore type headers and use the configured default type instead.
+        spring.json.use.type.headers: false
+        # 🔹 When headers are ignored, deserialize JSON into this local class
+        spring.json.value.default.type: com.lloyds.payments.dto.PaymentEvent
 
       listener:
         # 🔹 Parallel consumers (match Kafka partitions)
