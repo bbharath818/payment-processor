@@ -1,7 +1,7 @@
 package com.lloyds.payments.service;
 
 
-import com.lloyds.payments.dto.MetricSummaryDTO;
+import com.lloyds.payments.dto.MetricsSummaryDTO;
 import com.lloyds.payments.dto.ReportSummaryDTO;
 import com.lloyds.payments.entity.PaymentOutcome;
 import com.lloyds.payments.repository.PaymentOutcomeRepository;
@@ -35,13 +35,13 @@ public class MetricService {
         totalProcessingTime.addAndGet(processingTime);
     }
 
-    public MetricSummaryDTO getMetricsSummary() {
+    public MetricsSummaryDTO getMetricsSummary() {
         long total = totalProcessed.get() + totalHeld.get() + totalRejected.get();
 
         double avg = total == 0 ? 0 :
                 (double) totalProcessingTime.get() / total;
 
-        return new MetricSummaryDTO(
+        return new MetricsSummaryDTO(
                 totalProcessed.get(),
                 totalHeld.get(),
                 totalRejected.get(),
@@ -69,7 +69,7 @@ public class MetricService {
 
     public List<PaymentOutcome> getAccountHistory(String accountId) {
         return repo
-                .findByDebitAccountIdOrCreditAccountIdOrderByCreatedAtDesc(
+                .findByDebitAccountIdOrCreditAccountIdOrderByProcessedAtDesc(
                         accountId, accountId);
     }
 }

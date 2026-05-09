@@ -4,7 +4,7 @@ import lombok.*;
 
 @Data
 @AllArgsConstructor
-public class MetricSummaryDTO {
+public class MetricsSummaryDTO {
     private long totalProcessed;
     private long totalHeld;
     private long totalRejected;

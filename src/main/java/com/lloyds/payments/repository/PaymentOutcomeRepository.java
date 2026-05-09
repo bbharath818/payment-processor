@@ -23,7 +23,7 @@ public interface PaymentOutcomeRepository extends JpaRepository<PaymentOutcome, 
             Pageable pageable
     );
 
-    List<PaymentOutcome> findByDebitAccountIdOrCreditAccountIdOrderByCreatedAtDesc(
+    List<PaymentOutcome> findByDebitAccountIdOrCreditAccountIdOrderByProcessedAtDesc(
             String debit,
             String credit
     );
