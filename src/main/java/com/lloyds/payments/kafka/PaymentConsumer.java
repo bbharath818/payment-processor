@@ -29,6 +29,10 @@ public class PaymentConsumer {
 	
 	@Autowired
 	private PaymentOutcomeRepository paymentOutcomeRepository;
+
+    @Autowired
+    private PaymentProducer paymentProducer;
+
 	
     @RetryableTopic(
             attempts = "4",
@@ -114,7 +118,7 @@ public class PaymentConsumer {
 
         // Save into DB
         paymentOutcomeRepository.save(paymentOutcome);
-
+        paymentProducer.PaymentOutcomeProcessed(paymentEvent);
         log.info(
                 "PaymentConsumer====PaymentOutcome saved successfully paymentId={}",
                 paymentEvent.getPaymentId()
