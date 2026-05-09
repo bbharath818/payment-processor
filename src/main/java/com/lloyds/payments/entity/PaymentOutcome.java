@@ -18,7 +18,7 @@ public class PaymentOutcome {
     private Long id;
 
     @Column(nullable = false)
-    private UUID paymentId;
+    private String paymentId;
 
     @Column(nullable = false)
     private String debitAccountId;

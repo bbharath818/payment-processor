@@ -15,7 +15,7 @@ import lombok.Data;
 public class PaymentEvent {
 
 	@NotNull(message = "Payment ID must not be null")
-	private UUID paymentId;
+	private String paymentId;
 
 	@NotBlank(message = "Debit account ID must not be blank")
 	private String debitAccountId;

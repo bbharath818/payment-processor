@@ -35,7 +35,8 @@ public class PaymentConsumer {
 	
 	private final Validator validator;
 
-	@RetryableTopic(attempts = "4", dltTopicSuffix = ".dlq")
+	@RetryableTopic(
+			attempts = "4")
 	@KafkaListener(topics = "payments.submitted", groupId = "payment-processor-group")
 	public void consume(PaymentEvent paymentEvent, @Header(KafkaHeaders.RECEIVED_KEY) String key,
 			@Header(KafkaHeaders.RECEIVED_PARTITION) int partition, @Header(KafkaHeaders.OFFSET) long offset) {

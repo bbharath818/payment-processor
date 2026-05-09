@@ -19,7 +19,7 @@ public class PaymentProcessorService {
     public PaymentOutcome processPayment(UUID paymentId, String debitAccountId, String creditAccountId,
                                          String currency, String status, long processingTimeMs) {
         PaymentOutcome paymentOutcome = new PaymentOutcome();
-        paymentOutcome.setPaymentId(paymentId);
+        paymentOutcome.setPaymentId(String.valueOf(paymentId));
         paymentOutcome.setDebitAccountId(debitAccountId);
         paymentOutcome.setCreditAccountId(creditAccountId);
         paymentOutcome.setCurrency(currency);
