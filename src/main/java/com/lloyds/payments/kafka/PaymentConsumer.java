@@ -13,5 +13,8 @@ public class PaymentConsumer {
         System.out.println("Consumed payment event: " + paymentEvent);
 
         // Add your business logic here
+        
+        
+        
     }
 }
