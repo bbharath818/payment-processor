@@ -19,38 +19,35 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MetricService {
 
     @Autowired
-    private  PaymentOutcomeRepository repo;
+    private  PaymentOutcomeRepository paymentOutcomeRepository;
 
     private final AtomicLong totalProcessed = new AtomicLong();
     private final AtomicLong totalHeld = new AtomicLong();
     private final AtomicLong totalRejected = new AtomicLong();
     private final AtomicLong totalProcessingTime = new AtomicLong();
 
-    public void updateMetrics(String status, long processingTime) {
-        switch (status) {
-            case "PROCESSED" -> totalProcessed.incrementAndGet();
-            case "HELD" -> totalHeld.incrementAndGet();
-            case "REJECTED" -> totalRejected.incrementAndGet();
-        }
-        totalProcessingTime.addAndGet(processingTime);
-    }
 
     public MetricsSummaryDTO getMetricsSummary() {
-        long total = totalProcessed.get() + totalHeld.get() + totalRejected.get();
+        List<PaymentOutcome> payments = paymentOutcomeRepository.findAll();
 
-        double avg = total == 0 ? 0 :
-                (double) totalProcessingTime.get() / total;
+        long processed = 0, held = 0, rejected = 0, totalTime = 0;
 
-        return new MetricsSummaryDTO(
-                totalProcessed.get(),
-                totalHeld.get(),
-                totalRejected.get(),
-                avg
-        );
+        for (PaymentOutcome p : payments) {
+            switch (p.getStatus()) {
+                case "PROCESSED" -> processed++;
+                case "HELD" -> held++;
+                case "REJECTED" -> rejected++;
+            }
+            totalTime += p.getProcessingTimeMs();
+        }
+
+        double avg = payments.isEmpty() ? 0 : (double) totalTime / payments.size();
+
+        return new MetricsSummaryDTO(processed, held, rejected, avg);
     }
 
     public ReportSummaryDTO getReportSummary() {
-        Object[] result = repo.getSummary();
+        Object[] result = paymentOutcomeRepository.getSummary();
 
         return new ReportSummaryDTO(
                 (Long) result[0],
@@ -62,13 +59,13 @@ public class MetricService {
         Pageable pageable = PageRequest.of(page, size);
 
         if (status != null)
-            return repo.findByStatus(status, pageable);
+            return paymentOutcomeRepository.findByStatus(status, pageable);
 
-        return repo.findAll(pageable);
+        return paymentOutcomeRepository.findAll(pageable);
     }
 
     public List<PaymentOutcome> getAccountHistory(String accountId) {
-        return repo
+        return paymentOutcomeRepository
                 .findByDebitAccountIdOrCreditAccountIdOrderByProcessedAtDesc(
                         accountId, accountId);
     }

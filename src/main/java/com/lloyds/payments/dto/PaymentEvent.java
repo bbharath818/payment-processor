@@ -2,7 +2,7 @@ package com.lloyds.payments.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Currency;
+import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class PaymentEvent {
 
-    private String paymentId;
+    private UUID paymentId;
 
     private String debitAccountId;
 
@@ -23,7 +23,7 @@ public class PaymentEvent {
 
     private BigDecimal amount;
 
-    private Currency currency;
+    private String currency;
 
     private String reference;
 
