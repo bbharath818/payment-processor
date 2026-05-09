@@ -1,31 +1,39 @@
 package com.lloyds.payments.dto;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
-@Builder
 public class PaymentEvent {
 
-    private UUID paymentId;
+	@NotNull(message = "Payment ID must not be null")
+	private UUID paymentId;
 
-    private String debitAccountId;
+	@NotBlank(message = "Debit account ID must not be blank")
+	private String debitAccountId;
 
-    private String creditAccountId;
+	@NotBlank(message = "Credit account ID must not be blank")
+	private String creditAccountId;
 
-    private BigDecimal amount;
+	@NotNull(message = "Amount must not be null")
+	@DecimalMin(value = "0.01", message = "Amount must be greater than 0")
+	private BigDecimal amount;
 
-    private String currency;
+	@NotNull(message = "Currency must not be null")
+	private String currency;
 
-    private String reference;
+	@Size(max = 35, message = "Reference must not exceed 35 characters")
+	private String reference;
 
-    private LocalDateTime createdTime;
+	@NotNull(message = "Timestamp must not be null")
+	@PastOrPresent(message = "Timestamp must not be in the future")
+	private Instant timestamp;
 }

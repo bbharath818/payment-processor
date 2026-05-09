@@ -17,6 +17,8 @@ import com.lloyds.payments.entity.PaymentOutcome;
 import com.lloyds.payments.repository.AccountRepository;
 import com.lloyds.payments.repository.PaymentOutcomeRepository;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,6 +32,8 @@ public class PaymentConsumer {
 	private final AccountRepository accountRepository;
 	private final PaymentOutcomeRepository paymentOutcomeRepository;
 	private final PaymentProducer paymentProducer;
+	
+	private final Validator validator;
 
 	@RetryableTopic(attempts = "4", dltTopicSuffix = ".dlq")
 	@KafkaListener(topics = "payments.submitted", groupId = "payment-processor-group")
@@ -37,6 +41,8 @@ public class PaymentConsumer {
 			@Header(KafkaHeaders.RECEIVED_PARTITION) int partition, @Header(KafkaHeaders.OFFSET) long offset) {
 
 		long startTime = System.currentTimeMillis();
+		
+		validatePaymentEvent(paymentEvent);
 
 		log.info("Received payment event paymentId={}, key={}, partition={}, offset={}", paymentEvent.getPaymentId(),
 				key, partition, offset);
@@ -69,6 +75,27 @@ public class PaymentConsumer {
 
 			throw ex;
 		}
+	}
+	
+	private void validatePaymentEvent(
+	        PaymentEvent paymentEvent
+	) {
+
+	    var violations = validator.validate(paymentEvent);
+
+	    if (!violations.isEmpty()) {
+
+	        String errorMessage = violations.stream()
+	                .map(ConstraintViolation::getMessage)
+	                .findFirst()
+	                .orElse("Invalid payment event");
+	        PaymentOutcome paymentOutcome = buildPaymentOutcome(paymentEvent);
+	        rejectPayment(paymentOutcome, HttpStatus.BAD_REQUEST, errorMessage);
+	        throw new ResponseStatusException(
+	                HttpStatus.BAD_REQUEST,
+	                errorMessage
+	        );
+	    }
 	}
 
 	private PaymentOutcome buildPaymentOutcome(PaymentEvent paymentEvent) {
