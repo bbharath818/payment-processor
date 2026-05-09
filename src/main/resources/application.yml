@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: payment-service
+    name: payment-processor
 
   datasource:
     url: jdbc:h2:mem:paymentdb
@@ -27,15 +27,67 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
 
-    consumer:
-      group-id: payment-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # 🔹 Durability: ensures message is written to all replicas
+      acks: all
+      # 🔹 Batch messages to improve throughput
+      linger-ms: 10
+
+      # 🔹 Batch size (in bytes)
+      batch-size: 65536   # 64 KB
+
+      # 🔹 Compress messages to reduce network usage
+      compression-type: snappy
+
+      # 🔹 Retry on transient failures
+      retries: 5
+
+      # 🔹 Timeout for broker response
+      request-timeout-ms: 30000
+
+      # 🔹 Delivery timeout (total time for retries)
+      delivery-timeout-ms: 120000
+
+      properties:
+        enable.idempotence: true
+
+    consumer:
+      group-id: payment-processor-group
+
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+      # 🔹 Read from beginning if no offset exists (safe for restart)
+      auto-offset-reset: earliest
+
+      # 🔹 Disable auto commit for reliability
+      enable-auto-commit: false
+
+      # 🔹 Max records per poll (batch size)
+      max-poll-records: 500
+
+      # 🔹 Max time between polls before rebalance
+      max-poll-interval-ms: 300000
+
+      properties:
+        # 🔹 Trust package for JSON deserialization
+        spring.json.trusted.packages: "*"
+
+      listener:
+        # 🔹 Parallel consumers (match Kafka partitions)
+        concurrency: 6
+
+        # 🔹 Commit offsets after batch processing
+        ack-mode: BATCH
+
+        # 🔹 Improve throughput by consuming in batches
+        type: batch
+  #        listener:
+  #          ack-mode: manual
+  #          concurrency: 3
+
 
 management:
   endpoints:
