@@ -97,3 +97,11 @@ management:
   endpoint:
     health:
       show-details: always
+logging:
+  level:
+    root: INFO
+    org.springframework.kafka: DEBUG
+    org.springframework.kafka.retrytopic: DEBUG
+    org.springframework.kafka.listener: ERROR
+    org.apache.kafka.clients.consumer: ERROR
+    org.apache.kafka.clients.producer: INFO

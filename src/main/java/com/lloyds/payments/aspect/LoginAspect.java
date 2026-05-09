@@ -14,7 +14,7 @@ public class LoginAspect {
 
     Logger logger = LoggerFactory.getLogger(LoginAspect.class);
 
-    @Pointcut("execution(* com.lloyds.payments.ingestor.*.*.*(..))")
+    @Pointcut("execution(* com.lloyds.payments.*.*.*(..))")
     public void PaymentIngestor(){
     }
 
