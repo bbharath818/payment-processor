@@ -1,0 +1,32 @@
+[
+  {
+    "paymentId": "fdfac041-1a5d-4116-8253-1c7ee750c5c8",
+    "debitAccountId": "30-91-44/12309876",
+    "creditAccountId": "30-91-44/12309876",
+    "amount": 17059.38,
+    "currency": "GBP",
+    "status": "PROCESSED",
+    "processedAt": "2024-10-03T16:00:21Z",
+    "processingTimeMs": 124
+  },
+  {
+    "paymentId": "6c69263b-a667-4d0c-9144-b6bce4fc376a",
+    "debitAccountId": "88-99-11/63819274",
+    "creditAccountId": "09-01-28/11223344",
+    "amount": 136937.93,
+    "currency": "GBP",
+    "status": "HELD",
+    "processedAt": "2024-10-29T06:50:10Z",
+    "processingTimeMs": 543
+  },
+  {
+    "paymentId": "26ab0d74-877e-4fb3-8129-1aaad20725d1",
+    "debitAccountId": "55-66-33/98765432",
+    "creditAccountId": "09-01-28/55667788",
+    "amount": 161894.81,
+    "currency": "GBP",
+    "status": "REJECTED",
+    "processedAt": "2024-10-11T11:38:01Z",
+    "processingTimeMs": 900
+  }
+]
