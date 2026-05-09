@@ -1,5 +1,6 @@
 package com.lloyds.payments.exception;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -34,4 +35,14 @@ public class PaymentProcessorExceptionHandler {
         return ResponseEntity.status(500).body(error);
     }
 
+
+    @ExceptionHandler(InvalidInputException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidInputException(InvalidInputException ex, HttpServletRequest request) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(400)
+                .error("INVALID_INPUT")
+                .errorMessage(ex.getMessage())
+                .build();
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
 }

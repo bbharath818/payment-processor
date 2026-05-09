@@ -46,14 +46,6 @@ public class MetricService {
         return new MetricsSummaryDTO(processed, held, rejected, avg);
     }
 
-    public ReportSummaryDTO getReportSummary() {
-        Object[] result = paymentOutcomeRepository.getSummary();
-
-        return new ReportSummaryDTO(
-                (Long) result[0],
-                (BigDecimal) result[1]
-        );
-    }
 
     public Page<PaymentOutcome> getActivity(String status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -64,9 +56,4 @@ public class MetricService {
         return paymentOutcomeRepository.findAll(pageable);
     }
 
-    public List<PaymentOutcome> getAccountHistory(String accountId) {
-        return paymentOutcomeRepository
-                .findByDebitAccountIdOrCreditAccountIdOrderByProcessedAtDesc(
-                        accountId, accountId);
-    }
 }

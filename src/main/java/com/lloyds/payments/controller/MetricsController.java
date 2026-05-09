@@ -36,11 +36,4 @@ public class MetricsController {
         return ResponseEntity.ok(activity);
     }
 
-    @GetMapping("/accounts/{accountId}/history")
-    public ResponseEntity<List<PaymentOutcome>> getAccountHistory(
-            @PathVariable String accountId) {
-
-        List<PaymentOutcome> accountHistory = metricService.getAccountHistory(accountId);
-        return ResponseEntity.ok(accountHistory);
-    }
 }
