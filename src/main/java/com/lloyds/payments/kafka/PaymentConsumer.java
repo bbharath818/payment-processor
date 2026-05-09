@@ -1,9 +1,8 @@
 package com.lloyds.payments.kafka;
 
+import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
@@ -18,110 +17,132 @@ import com.lloyds.payments.entity.PaymentOutcome;
 import com.lloyds.payments.repository.AccountRepository;
 import com.lloyds.payments.repository.PaymentOutcomeRepository;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class PaymentConsumer {
-	
-	@Autowired
-	private AccountRepository accountRepository;
-	
-	@Autowired
-	private PaymentOutcomeRepository paymentOutcomeRepository;
 
-    @Autowired
-    private PaymentProducer paymentProducer;
+	private static final BigDecimal HOLD_LIMIT = new BigDecimal("250000");
 
-	
-    @RetryableTopic(
-            attempts = "4",
-            dltTopicSuffix = ".dlq"
-    )
+	private final AccountRepository accountRepository;
+	private final PaymentOutcomeRepository paymentOutcomeRepository;
+	private final PaymentProducer paymentProducer;
 
-    @KafkaListener(topics = "payments.submitted", groupId = "payment-processor-group" )
-    public void consume( PaymentEvent paymentEvent,
-                         @Header(KafkaHeaders.RECEIVED_KEY)
-                         String key,
-                         @Header(KafkaHeaders.RECEIVED_PARTITION)
-                         int partition,
-                         @Header(KafkaHeaders.OFFSET)
-                         long offset)  {
-        log.info("PaymentConsumer=====Received payment event: {}", paymentEvent);
-        try {
+	@RetryableTopic(attempts = "4", dltTopicSuffix = ".dlq")
+	@KafkaListener(topics = "payments.submitted", groupId = "payment-processor-group")
+	public void consume(PaymentEvent paymentEvent, @Header(KafkaHeaders.RECEIVED_KEY) String key,
+			@Header(KafkaHeaders.RECEIVED_PARTITION) int partition, @Header(KafkaHeaders.OFFSET) long offset) {
 
-            log.info(
-                    "PaymentConsumer===Received payment event paymentId={}, key={}, partition={}, offset={}",
-                    paymentEvent.getPaymentId(), key, partition, offset );
-            // BUSINESS LOGIC
-            
-            Optional<Account> debitAccount = accountRepository.findById(paymentEvent.getDebitAccountId());
-            
-            if(debitAccount.isEmpty()) {
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-						"User with Debit Account Id " + paymentEvent.getDebitAccountId() + " not found");
-            }
-            
-            Optional<Account> creditAccount = accountRepository.findById(paymentEvent.getDebitAccountId());
-            if(creditAccount.isEmpty()) {
-				throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-						"User with Credit Account Id " + paymentEvent.getCreditAccountId() + " not found");
-            }
-            
-            if(debitAccount.get().getStatus().equals("SUSPENDED")) {
-				throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
-						"Debit Account " + paymentEvent.getCreditAccountId() + " is suspended");
-            }
-            
-            if(creditAccount.get().getStatus().equals("SUSPENDED")) {
-				throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
-						"Credit Account " + paymentEvent.getCreditAccountId() + " is suspended");
-            }
-            
-            if(debitAccount.get().getStatus().equals("ACTIVE") && creditAccount.get().getStatus().equals("ACTIVE")) {
-            	// Publish to Kafka
-                processPayment(paymentEvent);
-            }
-            
-            log.info("PaymentConsumer====Payment processed successfully paymentId={}", paymentEvent.getPaymentId());
-        } catch (Exception ex) {
-            log.error("PaymentConsumer===Payment processing failed paymentId={}",
-                    paymentEvent.getPaymentId(), ex );  // no acknowledge -> retry
-            throw ex;
-        }
-        log.info("PaymentConsumer====Payment processed successfully");
-    }
-    
-    private void processPayment(PaymentEvent paymentEvent) {
+		long startTime = System.currentTimeMillis();
 
-        long startTime = System.currentTimeMillis();
+		log.info("Received payment event paymentId={}, key={}, partition={}, offset={}", paymentEvent.getPaymentId(),
+				key, partition, offset);
 
-        log.info(
-                "PaymentConsumer====Processing debitAccountId={}, amount={}",
-                paymentEvent.getDebitAccountId(),
-                paymentEvent.getAmount()
-        );
+		try {
 
-        // Convert PaymentEvent -> PaymentOutcome
-        PaymentOutcome paymentOutcome = new PaymentOutcome();
+			PaymentOutcome paymentOutcome = buildPaymentOutcome(paymentEvent);
 
-        paymentOutcome.setPaymentId(paymentEvent.getPaymentId());
-        paymentOutcome.setDebitAccountId(paymentEvent.getDebitAccountId());
-        paymentOutcome.setCreditAccountId(paymentEvent.getCreditAccountId());
-        paymentOutcome.setAmount(paymentEvent.getAmount());
-        paymentOutcome.setCurrency(paymentEvent.getCurrency());
-        paymentOutcome.setStatus("SUCCESS");
-        paymentOutcome.setProcessedAt(Instant.now());
+			Account debitAccount = validateDebitAccount(paymentEvent, paymentOutcome);
 
-        long processingTime = System.currentTimeMillis() - startTime;
-        paymentOutcome.setProcessingTimeMs(processingTime);
+			Account creditAccount = validateCreditAccount(paymentEvent, paymentOutcome);
 
-        // Save into DB
-        paymentOutcomeRepository.save(paymentOutcome);
-        paymentProducer.PaymentOutcomeProcessed(paymentEvent);
-        log.info(
-                "PaymentConsumer====PaymentOutcome saved successfully paymentId={}",
-                paymentEvent.getPaymentId()
-        );
-    }
+			validateAccountStatus(debitAccount, "Debit", paymentOutcome);
+
+			validateAccountStatus(creditAccount, "Credit", paymentOutcome);
+
+			setPaymentStatus(paymentOutcome);
+
+			paymentOutcome.setProcessedAt(Instant.now());
+
+			paymentOutcome.setProcessingTimeMs(System.currentTimeMillis() - startTime);
+
+			processPayment(paymentOutcome);
+
+			log.info("Payment processed successfully paymentId={}", paymentEvent.getPaymentId());
+
+		} catch (Exception ex) {
+
+			log.error("Payment processing failed paymentId={}", paymentEvent.getPaymentId(), ex);
+
+			throw ex;
+		}
+	}
+
+	private PaymentOutcome buildPaymentOutcome(PaymentEvent paymentEvent) {
+
+		PaymentOutcome paymentOutcome = new PaymentOutcome();
+
+		paymentOutcome.setPaymentId(paymentEvent.getPaymentId());
+
+		paymentOutcome.setDebitAccountId(paymentEvent.getDebitAccountId());
+
+		paymentOutcome.setCreditAccountId(paymentEvent.getCreditAccountId());
+
+		paymentOutcome.setAmount(paymentEvent.getAmount());
+
+		paymentOutcome.setCurrency(paymentEvent.getCurrency());
+
+		return paymentOutcome;
+	}
+
+	private Account validateDebitAccount(PaymentEvent paymentEvent, PaymentOutcome paymentOutcome) {
+
+		return accountRepository.findById(paymentEvent.getDebitAccountId())
+				.orElseThrow(() -> rejectPayment(paymentOutcome, HttpStatus.NOT_FOUND,
+						"Debit Account not found: " + paymentEvent.getDebitAccountId()));
+	}
+
+	private Account validateCreditAccount(PaymentEvent paymentEvent, PaymentOutcome paymentOutcome) {
+
+		return accountRepository.findById(paymentEvent.getCreditAccountId())
+				.orElseThrow(() -> rejectPayment(paymentOutcome, HttpStatus.NOT_FOUND,
+						"Credit Account not found: " + paymentEvent.getCreditAccountId()));
+	}
+
+	private void validateAccountStatus(Account account, String accountType, PaymentOutcome paymentOutcome) {
+
+		if ("SUSPENDED".equals(account.getStatus())) {
+
+			throw rejectPayment(paymentOutcome, HttpStatus.UNPROCESSABLE_CONTENT,
+					accountType + " Account " + account.getAccountId() + " is suspended");
+		}
+	}
+
+	private void setPaymentStatus(PaymentOutcome paymentOutcome) {
+
+		if (paymentOutcome.getAmount().compareTo(HOLD_LIMIT) > 0) {
+
+			paymentOutcome.setStatus("HELD");
+
+		} else {
+
+			paymentOutcome.setStatus("SUCCESS");
+		}
+	}
+
+	private ResponseStatusException rejectPayment(PaymentOutcome paymentOutcome, HttpStatus status, String message) {
+
+		paymentOutcome.setStatus("REJECTED");
+
+		paymentOutcome.setProcessedAt(Instant.now());
+
+		processPayment(paymentOutcome);
+
+		return new ResponseStatusException(status, message);
+	}
+
+	private void processPayment(PaymentOutcome paymentOutcome) {
+
+		log.info("Processing payment debitAccountId={}, amount={}, status={}", paymentOutcome.getDebitAccountId(),
+				paymentOutcome.getAmount(), paymentOutcome.getStatus());
+
+		paymentOutcomeRepository.save(paymentOutcome);
+
+		paymentProducer.PaymentOutcomeProcessed(paymentOutcome);
+
+		log.info("PaymentOutcome saved successfully paymentId={}", paymentOutcome.getPaymentId());
+	}
 }

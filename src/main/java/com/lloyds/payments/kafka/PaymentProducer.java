@@ -1,10 +1,12 @@
 package com.lloyds.payments.kafka;
 
-import com.lloyds.payments.dto.PaymentEvent;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+
+import com.lloyds.payments.entity.PaymentOutcome;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
@@ -13,13 +15,13 @@ public class PaymentProducer {
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
 
-    public void PaymentOutcomeProcessed(PaymentEvent paymentEvent){
+    public void PaymentOutcomeProcessed(PaymentOutcome paymentOutcome){
         log.info(
                 "Publishing payment event paymentId={}, debitAccountId={}",
-                paymentEvent.getPaymentId(),
-                paymentEvent.getDebitAccountId()
+                paymentOutcome.getPaymentId(),
+                paymentOutcome.getDebitAccountId()
         );
-        kafkaTemplate.send("payments.processed", paymentEvent.getDebitAccountId(), paymentEvent)
+        kafkaTemplate.send("payments.processed", paymentOutcome.getDebitAccountId(), paymentOutcome)
                 .whenComplete((result, ex) -> {
                     if (ex == null) {
                         log.info(
@@ -30,7 +32,7 @@ public class PaymentProducer {
                     } else {
                         log.error(
                                 "Kafka publish failed paymentId={}",
-                                paymentEvent.getPaymentId(),
+                                paymentOutcome.getPaymentId(),
                                 ex
                         );
                     }
