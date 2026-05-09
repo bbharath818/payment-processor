@@ -1,5 +1,37 @@
 package com.lloyds.payments.repository;
 
-public class PaymentOutcomeRepository {
 
+import com.lloyds.payments.entity.PaymentOutcome;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.repository.*;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Repository
+public interface PaymentOutcomeRepository extends JpaRepository<PaymentOutcome, Long> {
+    Page<PaymentOutcome> findByStatus(
+            String status,
+            Pageable pageable
+    );
+
+    Page<PaymentOutcome> findByDebitAccountIdOrCreditAccountId(
+            String debit,
+            String credit,
+            Pageable pageable
+    );
+
+    List<PaymentOutcome> findByDebitAccountIdOrCreditAccountIdOrderByCreatedAtDesc(
+            String debit,
+            String credit
+    );
+
+    @Query("""
+            SELECT COUNT(p),
+                   SUM(p.amount)
+            FROM PaymentOutcome p
+           """)
+    Object[] getSummary();
 }
